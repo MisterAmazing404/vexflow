@@ -169,13 +169,22 @@ export class SVGContext extends RenderContext {
   }
 
   // Allow grouping elements in containers for interactivity.
-  openGroup(cls?: string, id?: string): SVGGElement {
+  /**
+   * Odyssey: when `data` is given the group is *semantic*: class and id are written as they
+   * are, without the `vf-` prefix (`<g class="note" id="uuid" data-confidence="0.82">`), so
+   * an id read from a click target is the id of the score object.
+   */
+  openGroup(cls?: string, id?: string, data?: Record<string, string>): SVGGElement {
     const group = this.create('g');
     this.groups.push(group);
     this.parent.appendChild(group);
     this.parent = group;
-    if (cls) group.setAttribute('class', prefix(cls));
-    if (id) group.setAttribute('id', prefix(id));
+    const semantic = data !== undefined;
+    if (cls) group.setAttribute('class', semantic ? cls : prefix(cls));
+    if (id) group.setAttribute('id', semantic ? id : prefix(id));
+    if (data) {
+      for (const name of Object.keys(data)) group.setAttribute(`data-${name}`, data[name]);
+    }
 
     this.applyAttributes(group, this.attributes);
     this.groupAttributes.push({ ...this.groupAttributes[this.groupAttributes.length - 1], ...this.attributes });

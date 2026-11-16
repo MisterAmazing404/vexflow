@@ -106,7 +106,7 @@ export class CanvasContext extends RenderContext {
   }
 
   // eslint-disable-next-line
-  openGroup(cls?: string, id?: string): any {
+  openGroup(cls?: string, id?: string, _data?: Record<string, string>): any {
     // Containers not implemented.
   }
 

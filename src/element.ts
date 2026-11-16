@@ -121,6 +121,8 @@ export class Element {
 
   private context?: RenderContext;
   protected attrs: ElementAttributes;
+  /** Odyssey: `data-*` attributes written onto the element's SVG group (see SVGContext.openGroup). */
+  protected dataAttributes: Record<string, string> = {};
   protected shouldDrawPointerRect: boolean;
 
   protected rendered: boolean;
@@ -335,6 +337,17 @@ export class Element {
   setRendered(rendered = true): this {
     this.rendered = rendered;
     return this;
+  }
+
+  /** Odyssey: set a `data-<name>` attribute for the SVG group, e.g. setData('confidence', '0.82'). */
+  setData(name: string, value: string): this {
+    this.dataAttributes[name] = value;
+    return this;
+  }
+
+  /** Odyssey: the `data-*` attributes (without the `data-` prefix). */
+  getData(): Record<string, string> {
+    return this.dataAttributes;
   }
 
   /** Return the element attributes. */

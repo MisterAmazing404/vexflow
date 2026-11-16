@@ -36,6 +36,13 @@ export interface FormatterOptions {
 
   /** Defaults to 5. */
   maxIterations?: number;
+
+  /**
+   * Odyssey: when true, tickables registered with `setPinnedX` keep that x position instead of
+   * being spaced by the formatter. Tick contexts without a pinned tickable (notes added by hand)
+   * are interpolated between their pinned neighbours.
+   */
+  lockToScan?: boolean;
 }
 
 /** An interface for passing options to various formatters **/
@@ -354,11 +361,27 @@ export class Formatter {
     });
   }
 
+  /** Odyssey: x of the notehead centre for tickables pinned to a scan position. */
+  protected pinnedX: Map<Tickable, number> = new Map();
+
+  /** Odyssey: pin a tickable's notehead centre to `centerX` (see `FormatterOptions.lockToScan`). */
+  setPinnedX(tickable: Tickable, centerX: number): this {
+    this.pinnedX.set(tickable, centerX);
+    return this;
+  }
+
+  /** Odyssey: turn scan locking on or off. */
+  setLockToScan(lock: boolean): this {
+    this.formatterOptions.lockToScan = lock;
+    return this;
+  }
+
   constructor(options?: FormatterOptions) {
     this.formatterOptions = {
       globalSoftmax: false,
       softmaxFactor: Tables.SOFTMAX_FACTOR,
       maxIterations: 5,
+      lockToScan: false,
       ...options,
     };
     this.justifyWidth = 0;
@@ -705,6 +728,12 @@ export class Formatter {
     this.minTotalWidth = x + shift;
     this.hasMinTotalWidth = true;
 
+    // Odyssey: positions come from the scan, not from justification.
+    if (this.formatterOptions.lockToScan && this.pinnedX.size > 0) {
+      this.applyPinnedX(contextList, contextMap, stave);
+      return this.evaluate();
+    }
+
     // No justification needed. End formatting.
     if (justifyWidth <= 0) return this.evaluate();
 
@@ -1041,6 +1070,48 @@ export class Formatter {
     });
 
     return this;
+  }
+
+  /**
+   * Odyssey: place the tick contexts that have a pinned tickable at their scan position and
+   * interpolate the others, by ticks, between the nearest pinned contexts. Before the first or
+   * after the last pinned context the formatter's own spacing is kept relative to it.
+   */
+  protected applyPinnedX(contextList: number[], contextMap: Record<number, TickContext>, stave?: Stave): void {
+    const offset = stave ? stave.getNoteStartX() + Metrics.get('Stave.padding', 0) : 0;
+    const natural = contextList.map((tick) => contextMap[tick].getX());
+    const pinned: (number | undefined)[] = contextList.map((tick) => {
+      const xs: number[] = [];
+      for (const tickable of contextMap[tick].getTickables()) {
+        const center = this.pinnedX.get(tickable);
+        if (center !== undefined) {
+          const headWidth = isNote(tickable) ? tickable.getGlyphWidth() : tickable.getMetrics().notePx;
+          xs.push(center - headWidth / 2 - offset);
+        }
+      }
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined;
+    });
+    const anchors = pinned.map((x, i) => (x === undefined ? -1 : i)).filter((i) => i >= 0);
+    if (anchors.length === 0) return;
+
+    contextList.forEach((tick, i) => {
+      let x = pinned[i];
+      if (x === undefined) {
+        const before = anchors.filter((a) => a < i).pop();
+        const after = anchors.find((a) => a > i);
+        if (before !== undefined && after !== undefined) {
+          const span = contextList[after] - contextList[before];
+          const t = span > 0 ? (tick - contextList[before]) / span : 0.5;
+          x = pinned[before]! + (pinned[after]! - pinned[before]!) * t;
+        } else if (before !== undefined) {
+          x = pinned[before]! + (natural[i] - natural[before]);
+        } else {
+          const first = after!;
+          x = pinned[first]! - (natural[first] - natural[i]);
+        }
+      }
+      contextMap[tick].setX(x);
+    });
   }
 
   /**
