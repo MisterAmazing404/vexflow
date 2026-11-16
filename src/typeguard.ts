@@ -103,6 +103,7 @@ export const enum Category {
   RenderContext = 'RenderContext',
   RepeatNote = 'RepeatNote',
   Repetition = 'Repetition',
+  Spanner = 'Spanner',
   Stave = 'Stave',
   StaveConnector = 'StaveConnector',
   StaveHairpin = 'StaveHairpin',

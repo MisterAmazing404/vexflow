@@ -49,6 +49,7 @@ export * from './rendercontext';
 export * from './renderer';
 export * from './repeatnote';
 export * from './sheet';
+export * from './spanning/index';
 export * from './stave';
 export * from './stavebarline';
 export * from './staveconnector';
