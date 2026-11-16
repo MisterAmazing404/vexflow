@@ -411,12 +411,21 @@ export function splitSpan(startSystem: number, endSystem: number): { system: num
 }
 
 /**
- * The open end of a slur or tie cut at a system edge: it stays on the level of the note it is attached to and
- * reaches just inside the edge. `which` is the end of the segment that is open: the start of a continuation (at the
- * left edge of its system) or the end of the first piece (at the right edge).
+ * The open end of a slur or tie cut at a system edge: it stays on the level of the note it is attached to (`anchor`)
+ * and reaches just inside the edge. `which` is the end of the segment that is open: the start of a continuation (at the
+ * left edge of its system) or the end of the first piece (at the right edge). A note right next to the edge would leave
+ * a stub, so the piece is at least `minLength` long (it then reaches over the clef and key signature, as engraved).
  */
-export function openEnd(anchor: Point, edgeX: number, which: 'start' | 'end', gap = SPACE * 0.4): Point {
-  return { x: which === 'start' ? edgeX + gap : edgeX - gap, y: anchor.y };
+export function openEnd(
+  anchor: Point,
+  edgeX: number,
+  which: 'start' | 'end',
+  minLength = SPACE * 2,
+  gap = SPACE * 0.4
+): Point {
+  const x =
+    which === 'start' ? Math.min(edgeX + gap, anchor.x - minLength) : Math.max(edgeX - gap, anchor.x + minLength);
+  return { x, y: anchor.y };
 }
 
 // ---- hairpins ---------------------------------------------------------------------------------------------------------
